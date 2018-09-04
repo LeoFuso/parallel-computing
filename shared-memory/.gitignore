@@ -1,8 +1,11 @@
 # Prerequisites
 *.d
 
+# Directories
 .idea/workspace.xml
 cmake-build-debug/
+bin/
+build/
 
 # Object files
 *.o
