@@ -12,18 +12,23 @@ int **
 allocate(unsigned int, unsigned int);
 
 void
-print_matrix(unsigned int, unsigned int, int **);
+print_matrix(unsigned int, unsigned int, int **, char *);
 
 void
 cleanup(unsigned int, int **);
 
 int **
-calculate_simple(unsigned int, unsigned int, int **, int **);
+benchmark(int **(*fn)(unsigned int, unsigned int, int **, int **, int **),
+          unsigned int,
+          unsigned int,
+          int **,
+          int **);
 
-typedef void (*benchmarkable)(unsigned int)(unsigned int)(int **)(int **);
+int **
+calculate_simple(unsigned int, unsigned int, int **, int **, int **);
 
-void
-benchmark(benchmarkable);
+int **
+calculate_swapped(unsigned int, unsigned int, int **, int **, int **);
 
 int
 main(void)
@@ -35,17 +40,26 @@ main(void)
     int **matrix_B = NULL;
     int **matrix_result = NULL;
 
+    int **
+    (*calculate_v1)(unsigned int, unsigned int, int **, int **, int **) = NULL;
+
+    int **
+    (*calculate_v2)(unsigned int, unsigned int, int **, int **, int **) = NULL;
+
+    int **
+    (*calculate_v3)(unsigned int, unsigned int, int **, int **, int **) = NULL;
+
     matrix_A = populate(n_line, n_column);
     matrix_B = populate(n_line, n_column);
 
-    printf("\n\n-----------\nMATRIX A ");
-    print_matrix(n_line, n_column, matrix_A);
-    printf("\n\n-----------\nMATRIX B ");
-    print_matrix(n_line, n_column, matrix_B);
+    calculate_v1 = calculate_simple;
+    calculate_v2 = calculate_swapped;
 
+    print_matrix(n_line, n_column, matrix_A, "MATRIX A");
+    print_matrix(n_line, n_column, matrix_B, "MATRIX B");
 
-    printf("\n\n-----------\nMATRIX RESULT ");
-    print_matrix(n_line, n_column, matrix_result);
+    benchmark(calculate_v1, n_line, n_column, matrix_A, matrix_B);
+    benchmark(calculate_v2, n_line, n_column, matrix_A, matrix_B);
 
     cleanup(n_line, matrix_A);
     cleanup(n_line, matrix_B);
@@ -55,20 +69,58 @@ main(void)
 }
 
 int **
-calculate_simple(unsigned int n_line, unsigned int n_column, int **matrix_A, int **matrix_B)
+calculate_simple(unsigned int n_line, unsigned int n_column, int **matrix_A, int **matrix_B, int **matrix_result)
 {
-
-    int **matrix_result = NULL;
-    matrix_result = allocate(n_line, n_column);
-
     unsigned int i;
     unsigned int j;
     unsigned int k;
 
     for (i = 0; i < n_line; i++)
-        for (j = 0; j < n_column; j++)
+        for (j = 0; j < n_line; j++)
             for (k = 0; k < n_line; k++)
                 matrix_result[i][j] += matrix_A[i][k] * matrix_B[k][j];
+
+    return matrix_result;
+}
+
+int **
+calculate_swapped(unsigned int n_line, unsigned int n_column, int **matrix_A, int **matrix_B, int **matrix_result)
+{
+    unsigned int i;
+    unsigned int j;
+    unsigned int k;
+
+    for (i = 0; i < n_line; i++)
+        for (k = 0; k < n_line; k++)
+            for (j = 0; j < n_line; j++)
+                matrix_result[i][j] += matrix_A[i][k] * matrix_B[k][j];
+    return matrix_result;
+}
+
+int **
+benchmark(int **(*fn)(unsigned int, unsigned int, int **, int **, int **),
+          unsigned int n_line,
+          unsigned int n_column,
+          int **matrix_A,
+          int **matrix_B)
+{
+    int **matrix_result = NULL;
+    matrix_result = allocate(n_line, n_column);
+
+    struct timeval tv;
+    double start_t, end_t, runtime;
+
+    gettimeofday(&tv, NULL);
+    start_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
+
+    matrix_result = fn(n_line, n_column, matrix_A, matrix_B, matrix_result);
+
+    gettimeofday(&tv, NULL);
+    end_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
+    runtime = end_t - start_t;
+
+    printf("RUNTIME: %f seconds\n", runtime);
+    print_matrix(n_line, n_column, matrix_result, "RESULT");
 
     return matrix_result;
 }
@@ -85,6 +137,19 @@ populate(unsigned int n_line, unsigned int n_column)
     for (i = 0; i < n_line; ++i)
         for (j = 0; j < n_column; ++j)
             matrix[i][j] = rand_lim(2, 25);
+
+    return matrix;
+}
+int **
+allocate(unsigned int n_line, unsigned int n_column)
+{
+    int **matrix = NULL;
+
+    matrix = (int **) calloc(n_line, sizeof(int **));
+
+    unsigned i;
+    for (i = 0; i < n_line; ++i)
+        matrix[i] = (int *) calloc(n_column, sizeof(int *));
 
     return matrix;
 }
@@ -106,8 +171,12 @@ rand_lim(int from, int to)
     return toReturn;
 }
 void
-print_matrix(unsigned int n_line, unsigned int n_column, int **matrix)
+print_matrix(unsigned int n_line, unsigned int n_column, int **matrix, char *title)
 {
+    if (n_line >= 10 || n_column >= 10)
+        return;
+
+    printf("\n\n-----------\n%s", title);
     printf("\n\n");
 
     unsigned int i;
@@ -128,38 +197,4 @@ cleanup(unsigned int n_line, int **matrix)
     for (i = 0; i < n_line; ++i)
         free(matrix[i]);
     free(matrix);
-}
-int **
-allocate(unsigned int n_line, unsigned int n_column)
-{
-    int **matrix = NULL;
-
-    matrix = (int **) calloc(n_line, sizeof(int **));
-
-    unsigned i;
-    for (i = 0; i < n_line; ++i)
-        matrix[i] = (int *) calloc(n_column, sizeof(int *));
-
-    return matrix;
-}
-int **
-benchmark(benchmarkable function, unsigned int n_line, unsigned int n_column, int **matrix_A, int **matrix_B)
-{
-    int ** matrix_result = NULL;
-
-    struct timeval tv;
-    double start_t, end_t, tempo_gasto;
-
-    gettimeofday(&tv, NULL);
-    start_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
-
-    matrix_result = function(n_line, n_column, matrix_A, matrix_B);
-
-    gettimeofday(&tv, NULL);
-    end_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
-    tempo_gasto = end_t - start_t;
-
-    printf("Column order; tempo para multiplicar coluna: %f secs \n", tempo_gasto);
-
-    return matrix_result;
 }
