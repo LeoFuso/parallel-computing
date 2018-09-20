@@ -32,9 +32,6 @@ calculate_swapped(unsigned int, int **, int **, int **);
 int **
 calculate_in_blocks(unsigned int, int **, int **, int **);
 
-unsigned int
-min(unsigned int, unsigned int);
-
 int
 main(void)
 {
@@ -108,17 +105,19 @@ calculate_in_blocks(unsigned int size, int **matrix_A, int **matrix_B, int **mat
 	unsigned int j;
 	unsigned int k;
 
+	unsigned int ii;
 	unsigned int jj;
 	unsigned int kk;
 
-	unsigned int block_size = 256;
+	unsigned int block_size = 512;
 
-	for (k = 0; k < size; k += block_size)
-		for (j = 0; j < size; j += block_size)
-			for (i = 0; i < size; ++i)
-				for (jj = j; jj < min(j + block_size, size); ++jj)
-					for (kk = k; kk < min(k + block_size, size); ++kk)
-						matrix_result[i][jj] += matrix_A[i][kk] * matrix_B[kk][jj];
+	for (i = 0; i < size; i += block_size)
+		for (k = 0; k < size; k += block_size)
+			for (j = 0; j < size; j += block_size)
+				for (ii = i; ii < i + block_size; ii++)
+					for (kk = k; kk < k + block_size; kk++)
+						for (jj = j; jj < j + block_size; jj++)
+							matrix_result[ii][jj] += matrix_A[ii][kk] * matrix_B[kk][jj];
 
 	return matrix_result;
 }
@@ -150,11 +149,6 @@ benchmark(int **(*fn)(unsigned int, int **, int **, int **),
 	cleanup(size, matrix_result);
 
 	return runtime;
-}
-unsigned int
-min(unsigned int a, unsigned int b)
-{
-	return a < b ? a : b;
 }
 
 int **
