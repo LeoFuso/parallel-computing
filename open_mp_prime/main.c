@@ -49,7 +49,7 @@ main(void)
     start_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
 
     uint32_t i;
-#pragma omp parallel for num_threads(thread_count) reduction(+: prime_count)
+#pragma omp parallel for schedule(static, 8) num_threads(thread_count) reduction(+: prime_count)
     for (i = 3; i < LIMIT; i += 2)
     {
         unsigned int p = is_prime(i);
