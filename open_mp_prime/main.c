@@ -8,50 +8,59 @@
 #include <omp.h>
 #endif
 
-#define LIMITE 5000000
+#include <omp.h>
+#include <stdint.h>
 
-int
-primo(int numero)
+#define LIMIT 5000000
+
+unsigned int
+is_prime(uint32_t number)
 {
-    int raiz, fator;
-    raiz = (int) sqrt((double) numero);
-    for (fator = 2; fator <= raiz; fator++)
-        if (numero % fator == 0)
+    uint32_t upper_lmt, i = 0;
+    upper_lmt = (uint32_t) sqrt(number);
+    for (i = 3; i <= upper_lmt; i += 2)
+    {
+        if (number % i == 0)
+        {
             return 0;
+        }
+    }
+
     return 1;
 }
 
 int
 main(void)
 {
-    int thread_count = 0;
-# ifdef _OPENMP
-    thread_count = omp_get_num_threads( );
-# else
-    thread_count = 1;
-# endif
+    /* if OpenMP is undefined */
+    unsigned int thread_count = 1;
+
+    /* 2 is prime, we'll start with that */
+    uint32_t prime_count = 1;
+
+#ifdef _OPENMP
+    thread_count = omp_get_max_threads();
+#endif
 
     struct timeval tv;
-    double start_t, end_t, tempo_gasto;
-
-    int quantidade = 0, numero;
+    double start_t, end_t, runtime;
 
     gettimeofday(&tv, NULL);
     start_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
 
-#pragma omp parallel for num_threads(thread_count) reduction(+: quantidade)
-    for (numero = 2; numero < LIMITE; numero++)
+    uint32_t i;
+#pragma omp parallel for num_threads(thread_count) reduction(+: prime_count)
+    for (i = 3; i < LIMIT; i += 2)
     {
-        int p = primo(numero);
-        quantidade += p;
+        unsigned int p = is_prime(i);
+        prime_count += p;
     }
 
     gettimeofday(&tv, NULL);
     end_t = (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
-    tempo_gasto = end_t - start_t;
+    runtime = end_t - start_t;
 
-    printf("Total de numeros primos ate %d: %d\n", LIMITE, quantidade);
-    printf("THREADS USADOS: %d\n", thread_count);
-    printf("TEMPO GASTO %f\n", tempo_gasto);
-
+    printf("QUANTIDADE DE THREADS USADAS: %d\n", thread_count);
+    printf("TOTAL NÚMEROS PRIMOS ATÉ %d: %d\n", LIMIT, prime_count);
+    printf("TEMPO GASTO: %f\n", runtime);
 }
